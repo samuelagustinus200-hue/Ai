@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Asisten AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--paper:#e9efff;--card:#ffffff;--ink:#101223;--bd:#101223;--sh:#101223;--mut:#5a6188;--pri:#5b4bff;--lem:#ffe14d;--mint:#7ff0c5;--red:#ff5d5d;
+--disp:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"Hanken Grotesk","Segoe UI",system-ui,sans-serif}
+:root[data-theme=dark]{--paper:#0d0f22;--card:#181c3a;--ink:#eceeff;--bd:#4a52a8;--sh:#000;--mut:#9aa1cc;--pri:#7b6dff}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.5 var(--body);height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--pri);outline-offset:2px}
+.view{flex:1;min-height:0;position:relative}
+
+/* mascot */
+.bot{--s:44px;width:var(--s);height:var(--s);flex:none;background:var(--lem);border:2px solid var(--bd);position:relative;
+border-radius:46% 54% 50% 50%/55% 45% 55% 45%;box-shadow:2px 2px 0 var(--sh);animation:morph 7s ease-in-out infinite}
+.bot::before,.bot::after{content:"";position:absolute;top:38%;width:13%;height:21%;background:#101223;border-radius:50%;animation:blink 4.6s infinite}
+.bot::before{left:29%}.bot::after{right:29%}
+.bot.sm{--s:30px;box-shadow:none}
+.bot.xl{--s:116px;box-shadow:5px 5px 0 var(--sh)}
+.bot.think{animation:morph 7s ease-in-out infinite,hop .7s ease-in-out infinite}
+@keyframes morph{50%{border-radius:56% 44% 42% 58%/44% 56% 46% 54%}}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes hop{50%{translate:0 -4px}}
+
+/* top bars + buttons */
+.top{display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;border-bottom:2px solid var(--bd);background:var(--card)}
+.who{flex:1;min-width:0;line-height:1.2}
+.who b{display:block;font:800 19px var(--disp)}
+.who span{font-size:13px;color:var(--mut)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#19c37d;margin-right:6px}
+.ib,.btn{background:var(--card);border:2px solid var(--bd);border-radius:12px;padding:6px 12px;font-weight:700;box-shadow:2px 2px 0 var(--sh);transition:translate .08s,box-shadow .08s}
+.ib:active,.btn:active,.chip:active,.send:active{translate:2px 2px;box-shadow:0 0 0 var(--sh)}
+.btn.pri{background:var(--pri);color:#fff}
+.btn.red{background:var(--red);color:#fff}
+.pop{position:absolute;right:14px;top:calc(64px + env(safe-area-inset-top,0px));z-index:30;background:var(--card);border:2px solid var(--bd);border-radius:14px;box-shadow:4px 4px 0 var(--sh);padding:6px;min-width:210px}
+.pop button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:9px 10px;font-weight:500}
+.pop button:hover{background:var(--paper)}
+
+/* feed */
+.shell{display:flex;flex-direction:column;height:100%;max-width:780px;margin:0 auto;background:var(--paper)}
+.scroll{flex:1;overflow-y:auto;padding:8px 16px 16px;scroll-behavior:smooth}
+.hero{text-align:center;padding:28px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.hero h1{font:800 clamp(30px,8vw,46px)/1.05 var(--disp);margin:6px 0 0;letter-spacing:-.02em}
+.hero p{margin:0;color:var(--mut);max-width:34ch}
+.nm{width:min(320px,100%);background:var(--card);border:2px solid var(--bd);border-radius:12px;padding:9px 12px;text-align:center}
+.chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:4px}
+.chip{background:var(--card);border:2px solid var(--bd);border-radius:14px;padding:9px 14px;font-weight:500;box-shadow:3px 3px 0 var(--sh);transition:translate .08s,box-shadow .08s}
+.chip:nth-child(odd){rotate:-1.2deg}.chip:nth-child(even){rotate:1deg}
+.chip:hover{background:var(--lem);color:#101223}
+.sep{text-align:center;margin:14px 0 6px}
+.sep span{font-size:12px;font-weight:700;color:var(--mut);background:var(--card);border:2px solid var(--bd);border-radius:99px;padding:2px 12px}
+.row-m{display:flex;gap:8px;margin:10px 0;align-items:flex-end}
+.row-m.me{justify-content:flex-end}
+.col{max-width:min(84%,540px);display:flex;flex-direction:column}
+.me .col{align-items:flex-end}
+.bub{padding:10px 14px;border:2px solid var(--bd);border-radius:18px;background:var(--card);box-shadow:3px 3px 0 var(--sh);overflow-wrap:anywhere;white-space:pre-wrap;max-width:min(84%,540px)}
+.col .bub{max-width:100%}
+.them .bub{border-bottom-left-radius:4px}
+.me .bub{background:var(--pri);color:#fff;border-bottom-right-radius:4px}
+.bub a{color:inherit;text-decoration:underline}
+.bub code{background:rgba(127,127,160,.25);border-radius:6px;padding:1px 6px;font-family:ui-monospace,Consolas,monospace;font-size:.92em}
+.meta{font-size:11px;color:var(--mut);margin-top:5px;display:flex;gap:10px}
+.cp{background:none;border:0;padding:0;color:var(--mut);text-decoration:underline;font-size:11px}
+.shim{background:linear-gradient(90deg,var(--mut),var(--ink),var(--mut));background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:500;animation:sh 1.7s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+
+/* composer */
+.comp{display:flex;gap:10px;align-items:flex-end;padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px))}
+.comp textarea{flex:1;background:var(--card);border:2px solid var(--bd);border-radius:16px;padding:11px 14px;resize:none;max-height:130px;line-height:1.4}
+.send{width:48px;height:48px;border-radius:14px;border:2px solid var(--bd);background:var(--lem);color:#101223;font-size:20px;font-weight:800;box-shadow:3px 3px 0 var(--sh);flex:none}
+
+/* admin */
+.gate{height:100%;display:grid;place-items:center;padding:20px}
+.gate .card{background:var(--card);border:2px solid var(--bd);border-radius:20px;box-shadow:6px 6px 0 var(--sh);padding:26px;width:min(380px,100%);display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.gerr{margin:0;color:var(--red);font-weight:700;min-height:1.2em;font-size:14px}
+.gate h2{font:800 26px var(--disp);margin:0}
+.gate input{width:100%;background:var(--paper);border:2px solid var(--bd);border-radius:12px;padding:10px 12px}
+.adm{display:grid;grid-template-columns:370px 1fr;height:100%}
+.side{display:flex;flex-direction:column;min-height:0;border-right:2px solid var(--bd);background:var(--card)}
+.side header{padding:calc(12px + env(safe-area-inset-top,0px)) 14px 10px;display:flex;flex-direction:column;gap:10px}
+.hd{display:flex;align-items:center;gap:8px}
+.hd b{font:800 22px var(--disp);flex:1}
+.stats{display:flex;gap:8px}
+.stat{flex:1;border:2px solid var(--bd);border-radius:12px;padding:6px 10px;background:var(--paper);line-height:1.2}
+.stat b{display:block;font:800 20px var(--disp)}
+.stat span{font-size:12px;color:var(--mut)}
+.side input{width:100%;background:var(--paper);border:2px solid var(--bd);border-radius:12px;padding:9px 12px}
+.tabs{display:flex;gap:8px}
+.tabs button{flex:1;border:2px solid var(--bd);background:var(--card);border-radius:10px;padding:5px;font-weight:700}
+.tabs button.on{background:var(--lem);color:#101223}
+#aList{flex:1;overflow-y:auto;border-top:2px solid var(--bd)}
+.item{display:flex;gap:10px;padding:12px 14px;border-bottom:2px solid var(--bd);cursor:pointer}
+.item.on{background:var(--lem);color:#101223}
+.item.on .pv,.item.on .tm{color:#3c3f55}
+.item .bd2{flex:1;min-width:0}
+.item .l1,.item .l2{display:flex;gap:8px;align-items:center}
+.item .l1 b{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-size:12px;color:var(--mut)}
+.pv{flex:1;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.item.un .pv{color:inherit;font-weight:700}
+.bdg{background:var(--red);color:#fff;border:2px solid var(--bd);border-radius:99px;font-size:11px;font-weight:800;padding:0 7px}
+.av{width:42px;height:42px;border-radius:50%;border:2px solid var(--bd);display:grid;place-items:center;font:800 17px var(--disp);color:#101223;flex:none}
+.av.sm{width:30px;height:30px;font-size:13px}
+.emp{color:var(--mut);padding:24px;text-align:center}
+.thr{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--paper)}
+#aBox{display:flex;flex-direction:column;height:100%;min-height:0}
+.thr .top .who b{font-size:18px}
+#aBack{display:none}
+.qr{display:flex;gap:8px;overflow-x:auto;padding:8px 14px 0;align-items:center}
+.qc{flex:none;background:var(--card);border:2px solid var(--bd);border-radius:99px;padding:3px 12px;font-size:13px;white-space:nowrap;position:relative}
+.qc.x::after{content:" ✕";color:var(--red);font-weight:800}
+.qc.sv{background:var(--mint);color:#101223;font-weight:700}
+#toast{position:fixed;left:50%;bottom:90px;translate:-50% 20px;opacity:0;pointer-events:none;background:#101223;color:#fff;border-radius:12px;padding:9px 16px;font-size:14px;z-index:99;transition:.25s;max-width:88vw}
+#toast.on{opacity:1;translate:-50% 0}
+@media(max-width:879px){
+ .adm{grid-template-columns:1fr}
+ .adm.thread .side{display:none}
+ .adm:not(.thread) .thr{display:none}
+ #aBack{display:inline-block}
+ #aSub{display:none}
+ .thr .top{gap:8px;padding-left:10px;padding-right:10px}
+ .thr .top .ib{padding:5px 9px;font-size:14px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<div class="gate" id="setup" hidden>
+ <div class="card">
+  <div class="bot xl"></div>
+  <h2>Supabase belum siap</h2>
+  <p id="setupMsg" style="margin:0;color:var(--mut)"></p>
+ </div>
+</div>
+<div id="toast" role="status"></div>
+
+<!-- ============ PENGGUNA ============ -->
+<section id="vu" class="view" hidden>
+ <div class="shell">
+  <header class="top">
+   <div class="bot" id="botTop"></div>
+   <div class="who"><b id="botName"></b><span><i class="dot"></i>Online</span></div>
+   <button class="ib" id="uMenuBtn" aria-label="Menu">Menu</button>
+  </header>
+  <div class="pop" id="uMenu" hidden>
+   <button data-a="theme">Ganti tema</button>
+   <button data-a="sound">Suara</button>
+   <button data-a="export">Unduh percakapan</button>
+   <button data-a="new">Chat baru</button>
+  </div>
+  <div class="scroll" id="uScroll">
+   <div class="hero" id="hero">
+    <div class="bot xl think" id="botHero"></div>
+    <h1 id="heroH"></h1>
+    <p id="heroP"></p>
+    <input class="nm" id="uName" maxlength="30" placeholder="Nama kamu (boleh dikosongkan)" autocomplete="nickname">
+    <div class="chips" id="chips"></div>
+   </div>
+   <div id="uMsgs"></div>
+  </div>
+  <div class="comp">
+   <textarea id="uInp" rows="1" placeholder="Tulis pesan…" aria-label="Pesan"></textarea>
+   <button class="send" id="uSend" aria-label="Kirim">↑</button>
+  </div>
+ </div>
+</section>
+
+<!-- ============ ADMIN ============ -->
+<section id="va" class="view" hidden>
+ <div class="gate" id="gate">
+  <div class="card">
+   <div class="bot xl"></div>
+   <h2>Ruang admin</h2>
+   <input id="em" type="email" placeholder="Email admin" autocomplete="username">
+   <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+   <p class="gerr" id="gerr" role="alert"></p>
+   <button class="btn pri" id="go" style="width:100%">Masuk</button>
+  </div>
+ </div>
+ <div class="adm" id="adm" hidden>
+  <aside class="side">
+   <header>
+    <div class="hd"><b>Kotak masuk</b><button class="ib" id="aTheme">Tema</button><button class="ib" id="aSnd">Suara</button></div>
+    <div class="stats"><div class="stat"><b id="stTot">0</b><span>Percakapan</span></div><div class="stat"><b id="stOpen">0</b><span>Belum dibalas</span></div></div>
+    <input id="aSearch" placeholder="Cari nama atau isi pesan" aria-label="Cari">
+    <div class="tabs"><button class="on" data-f="all">Semua</button><button data-f="open">Belum dibalas</button></div>
+   </header>
+   <div id="aList"></div>
+   <div style="display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));border-top:2px solid var(--bd)">
+    <button class="btn" id="aNotif" style="flex:1">Notifikasi</button><button class="btn" id="aOut" style="flex:1">Keluar</button>
+   </div>
+  </aside>
+  <section class="thr" id="aThr">
+   <div class="emp" id="aEmpty" style="margin:auto">Pilih percakapan di kiri untuk mulai membalas.</div>
+   <div id="aBox" hidden>
+    <header class="top">
+     <button class="ib" id="aBack">←</button>
+     <div id="aAv"></div>
+     <div class="who"><b id="aName"></b><span id="aSub"></span></div>
+     <button class="ib" id="aExp">Ekspor</button>
+     <button class="ib" id="aDel">Hapus</button>
+    </header>
+    <div class="scroll" id="aMsgs"></div>
+    <div class="qr" id="aQr"></div>
+    <div class="comp">
+     <textarea id="aInp" rows="1" placeholder="Balas sebagai asisten…  (**tebal**, `kode`, link otomatis)" aria-label="Balasan"></textarea>
+     <button class="send" id="aSend" aria-label="Kirim">↑</button>
+    </div>
+   </div>
+  </section>
+ </div>
+</section>
+
+<script>
+/* ================= ISI BAGIAN INI ================= */
+const CFG = {
+  URL: 'https://oinshhxlptbeddvojbzk.supabase.co',
+  KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pbnNoaHhscHRiZWRkdm9qYnprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MDI0NDksImV4cCI6MjEwNzQ3ODQ0OX0.tijqfsd4tb2SCsKLYs7I04s1wNrwNHWrREeNGyY0XOM', // anon key (publik, aman)
+  BOT: 'Asisten AI',
+  HERO_TITLE: 'Halo, ada yang bisa dibantu?',
+  HERO_SUB: 'Tanya apa saja. Aku jawab secepat mungkin.',
+  GREETING: 'Halo! Aku siap bantu. Mau tanya apa hari ini?',
+  CHIPS: ['Jelaskan topik yang sulit', 'Bantu aku cari ide', 'Tulis pesan untukku', 'Kasih tips belajar'],
+  QUICK: ['Sebentar ya, aku cek dulu.', 'Boleh dijelaskan lebih detail?', 'Siap, ini jawabannya:', 'Terima kasih sudah bertanya!'],
+  TYPEWRITER: true
+};
+/* ================================================== */
+
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const hhmm = d => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+const shortT = d => { const x = new Date(d); return x.toDateString() === new Date().toDateString() ? hhmm(x) : x.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }); };
+const dayLabel = d => {
+  const x = new Date(d), t = new Date();
+  if (x.toDateString() === t.toDateString()) return 'Hari ini';
+  if (x.toDateString() === new Date(t - 864e5).toDateString()) return 'Kemarin';
+  return x.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const finePointer = matchMedia('(pointer: fine)').matches;
+const sleepAuto = t => { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 130) + 'px'; };
+const throttle = (fn, ms) => { let l = 0; return (...a) => { const n = Date.now(); if (n - l > ms) { l = n; fn(...a); } }; };
+
+let toastT;
+function toast(t) { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 2800); }
+window.addEventListener('error', e => toast('Error: ' + (e.message || 'skrip gagal')));
+window.addEventListener('unhandledrejection', e => toast('Error: ' + ((e.reason && e.reason.message) || e.reason)));
+
+function download(name, text) {
+  const a = el('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function copy(t) { try { navigator.clipboard.writeText(t).then(() => toast('Tersalin'), () => toast('Gagal menyalin')); } catch (e) { toast('Gagal menyalin'); } }
+
+function ping() {
+  if (!ls.get('am_snd', true)) return;
+  try {
+    const c = new (window.AudioContext || window.webkitAudioContext)();
+    [660, 880].forEach((f, i) => {
+      const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + i * .12;
+      o.frequency.value = f; g.gain.setValueAtTime(.0001, t);
+      g.gain.exponentialRampToValueAtTime(.15, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + .2);
+      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + .22);
+    });
+  } catch (e) {}
+}
+
+/* tema */
+const setTheme = t => { document.documentElement.dataset.theme = t; ls.set('am_theme', t); };
+setTheme(ls.get('am_theme', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+const toggleTheme = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
+/* teks kaya: **tebal**, `kode`, link */
+function rich(parent, text) {
+  parent.textContent = '';
+  String(text).split(/(\*\*[^*\n]+\*\*|`[^`\n]+`|https?:\/\/[^\s<]+)/g).forEach(p => {
+    if (!p) return;
+    if (p.length > 4 && p.startsWith('**') && p.endsWith('**')) parent.appendChild(el('strong', null, p.slice(2, -2)));
+    else if (p.length > 2 && p[0] === '`' && p.endsWith('`')) parent.appendChild(el('code', null, p.slice(1, -1)));
+    else if (/^https?:\/\//.test(p)) { const a = el('a', null, p); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; parent.appendChild(a); }
+    else parent.appendChild(document.createTextNode(p));
+  });
+}
+
+/* ================= PENYIMPANAN ================= */
+function supaStore(role) {
+  const base = CFG.URL.trim().replace(/\/(rest|auth|realtime|storage)\/v1.*$/, '').replace(/\/+$/, '');
+  const sb = supabase.createClient(base, CFG.KEY, { auth: { storageKey: 'am-' + role, persistSession: true, autoRefreshToken: true } });
+  /* pengguna = login anonim otomatis (tiap orang punya identitas sendiri); admin = login email+password */
+  const ready = role === 'user'
+    ? (async () => { const { data } = await sb.auth.getSession(); if (!data.session) { const { error } = await sb.auth.signInAnonymously(); if (error) throw error; } })()
+    : Promise.resolve();
+  ready.catch(() => {});
+  const R = () => ready;
+  const chs = {};
+  const tch = (sid, cb) => {
+    let c = chs[sid];
+    if (!c) {
+      c = chs[sid] = { cbs: [], ch: null };
+      ready.then(() => { c.ch = sb.channel('t-' + sid).on('broadcast', { event: 't' }, p => c.cbs.forEach(f => f(p.payload))).subscribe(); }).catch(() => {});
+    }
+    if (cb) c.cbs.push(cb);
+    return c;
+  };
+  return {
+    live: true,
+    async login(email, pass) { const { data, error } = await sb.auth.signInWithPassword({ email, password: pass }); if (error) throw error; return data.user; },
+    async me() { const { data } = await sb.auth.getSession(); return data.session ? data.session.user : null; },
+    async logout() { await sb.auth.signOut(); },
+    async history(sid) { await R(); const { data, error } = await sb.from('messages').select('*').eq('session_id', sid).order('created_at'); if (error) throw error; return data || []; },
+    async inbox() { await R(); const { data, error } = await sb.from('messages').select('*').order('created_at', { ascending: false }).limit(1500); if (error) throw error; return (data || []).reverse(); },
+    async add(row) {
+      await R();
+      let r = await sb.from('messages').insert(row).select().single();
+      if (r.error && 'name' in row && /name/i.test(r.error.message || '')) { const { name, ...rest } = row; r = await sb.from('messages').insert(rest).select().single(); }
+      if (r.error) throw r.error; return r.data;
+    },
+    async drop(sid) { await R(); const { error } = await sb.from('messages').delete().eq('session_id', sid); if (error) throw error; },
+    watch(sid, cb) {
+      ready.then(() => {
+        const o = { event: 'INSERT', schema: 'public', table: 'messages' }; if (sid) o.filter = 'session_id=eq.' + sid;
+        sb.channel('w-' + (sid || 'all') + '-' + Math.random().toString(36).slice(2)).on('postgres_changes', o, p => cb(p.new)).subscribe();
+      }).catch(() => {});
+    },
+    typingListen(sid, cb) { tch(sid, cb); },
+    typingSend(sid, who) { const c = tch(sid); try { if (c.ch) c.ch.send({ type: 'broadcast', event: 't', payload: { who } }); } catch (e) {} }
+  };
+}
+const LIVE = /^https?:\/\//.test(CFG.URL) && typeof supabase !== 'undefined';
+const stores = {};
+function getStore(role) { return stores[role] || (stores[role] = supaStore(role)); }
+const hint = e => {
+  const m = (e && (e.message || e.error_description)) || String(e || '');
+  if (/anonymous/i.test(m)) return 'Aktifkan "Anonymous sign-ins" di Supabase.';
+  if (/column|owner_id/i.test(m)) return 'Kolom tabel kurang. Jalankan SQL terbaru sampai sukses.';
+  if (/schema cache|does not exist|relation/i.test(m)) return 'Tabel "messages" belum ada. Jalankan SQL sampai sukses.';
+  if (/row-level|policy/i.test(m)) return 'Policy menolak. Jalankan SQL terbaru di Supabase.';
+  if (/api key|apikey|jwt/i.test(m)) return 'KEY Supabase salah.';
+  if (/fetch|network|failed to/i.test(m)) return 'Tidak bisa terhubung ke Supabase. Cek URL.';
+  return m.slice(0, 120);
+};
+
+/* ================= DAFTAR PESAN (dipakai dua sisi) ================= */
+function makeFeed(box, scroller, meSender, opts) {
+  const seen = new Set(); let lastDay = null, tipEl = null, tipS = null, tipT = 0, hold = 0, n = 0;
+  const sc = () => { scroller.scrollTop = scroller.scrollHeight; };
+  const put = node => tipEl ? box.insertBefore(node, tipEl) : box.appendChild(node);
+  function typeIn(b, text) {
+    const len = text.length, total = Math.min(2600, Math.max(500, len * 22)), t0 = performance.now();
+    (function f(t) {
+      const k = Math.min(1, (t - t0) / total);
+      b.textContent = text.slice(0, Math.max(1, Math.ceil(len * k))); sc();
+      if (k < 1) requestAnimationFrame(f); else { rich(b, text); sc(); }
+    })(t0);
+  }
+  return {
+    seen,
+    get n() { return n; },
+    add(m, anim) {
+      if (m.id != null) { if (seen.has(m.id)) return false; seen.add(m.id); }
+      const when = m.created_at || new Date().toISOString(), mine = m.sender === meSender;
+      const dk = new Date(when).toDateString();
+      if (dk !== lastDay) { lastDay = dk; const s = el('div', 'sep'); s.appendChild(el('span', null, dayLabel(when))); put(s); }
+      const row = el('div', 'row-m ' + (mine ? 'me' : 'them'));
+      if (!mine) row.appendChild(opts.avatar(m));
+      const col = el('div', 'col'), b = el('div', 'bub'), meta = el('div', 'meta');
+      meta.appendChild(el('span', null, hhmm(when)));
+      if (!mine && opts.copy) { const c = el('button', 'cp', 'Salin'); c.onclick = () => copy(m.content); meta.appendChild(c); }
+      col.append(b, meta); row.appendChild(col); put(row); n++;
+      if (anim && opts.typewriter && !mine && !reduce) typeIn(b, m.content); else rich(b, m.content);
+      sc(); return true;
+    },
+    tip(on, labels) {
+      clearInterval(tipT); if (tipEl) { tipEl.remove(); tipEl = null; tipS = null; }
+      if (!on) return;
+      tipEl = el('div', 'row-m them'); tipEl.appendChild(opts.avatar({ thinking: true }));
+      const b = el('div', 'bub'); tipS = el('span', 'shim', labels[0]); b.appendChild(tipS); tipEl.appendChild(b); box.appendChild(tipEl); sc();
+      let i = 0; if (labels.length > 1) tipT = setInterval(() => { if (Date.now() < hold) return; i = (i + 1) % labels.length; tipS.textContent = labels[i]; }, 2400);
+    },
+    hold(text, ms) { if (!tipS) return; hold = Date.now() + ms; tipS.textContent = text; },
+    clear() { this.tip(false); box.innerHTML = ''; seen.clear(); lastDay = null; n = 0; }
+  };
+}
+const botEl = (size, think) => el('div', 'bot ' + (size || '') + (think ? ' think' : ''));
+
+/* ================= SISI PENGGUNA ================= */
+function initUser() {
+  const Store = getStore('user');
+  $('#botTop').className = 'bot'; $('#botName').textContent = CFG.BOT; document.title = CFG.BOT;
+  $('#heroH').textContent = CFG.HERO_TITLE; $('#heroP').textContent = CFG.HERO_SUB;
+  const feed = makeFeed($('#uMsgs'), $('#uScroll'), 'user', { avatar: m => botEl('sm', m.thinking), copy: true, typewriter: CFG.TYPEWRITER });
+  const inp = $('#uInp'), hero = $('#hero');
+  let sid = ls.get('am_sid', null); if (!sid) { sid = uid(); ls.set('am_sid', sid); }
+  let name = ls.get('am_name', ''), thinking = false, titleT = 0;
+  $('#uName').value = name;
+  $('#uName').addEventListener('input', e => { name = e.target.value.trim(); ls.set('am_name', name); });
+  const LABELS = ['Sedang berpikir', 'Mencari jawaban', 'Menyusun jawaban'];
+
+  const syncHero = () => { hero.hidden = feed.n > 0; };
+  function setThinking(on) { thinking = on; $('#botTop').classList.toggle('think', on); feed.tip(on, LABELS); }
+  function sync() { $('#botHero').classList.toggle('think', true); }
+
+  $('#chips').replaceChildren(...CFG.CHIPS.map(t => { const b = el('button', 'chip', t); b.onclick = () => send(t); return b; }));
+  sync();
+
+  const typingOut = throttle(() => Store.typingSend(sid, 'user'), 2000);
+  inp.addEventListener('input', () => { sleepAuto(inp); typingOut(); });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && finePointer) { e.preventDefault(); send(); } });
+  $('#uSend').onclick = () => send();
+
+  async function send(text) {
+    const t = (text || inp.value).trim(); if (!t) return;
+    inp.value = ''; sleepAuto(inp);
+    try {
+      const m = await Store.add({ session_id: sid, sender: 'user', content: t, name: name || null });
+      feed.add(m, false); syncHero(); setThinking(true);
+    } catch (e) { toast(('Pesan gagal terkirim. ' + hint(e)).trim()); inp.value = t; }
+  }
+
+  function bind() {
+    const mine = sid;
+    Store.watch(sid, m => {
+      if (m.session_id !== sid) return;
+      if (m.sender === 'admin') {
+        if (feed.add(m, true)) {
+          syncHero(); setThinking(false); ping();
+          if (document.hidden) { document.title = '● Pesan baru'; clearInterval(titleT); }
+        }
+      } else { feed.add(m, false); syncHero(); }
+    });
+    Store.typingListen(sid, p => { if (mine === sid && p.who === 'admin' && thinking) feed.hold('Sedang menulis jawaban', 4000); });
+  }
+  async function load() {
+    try {
+      const h = await Store.history(sid);
+      feed.clear();
+      if (h.length) { feed.add({ sender: 'admin', content: CFG.GREETING, created_at: h[0].created_at }, false); }
+      h.forEach(m => feed.add(m, false)); syncHero();
+      if (h.length && h[h.length - 1].sender === 'user') setThinking(true);
+    } catch (e) { toast(('Gagal memuat riwayat. ' + hint(e)).trim()); }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = CFG.BOT; });
+  bind(); load();
+
+  /* menu */
+  const menu = $('#uMenu');
+  const label = () => { $('[data-a=sound]', menu).textContent = 'Suara: ' + (ls.get('am_snd', true) ? 'nyala' : 'mati'); };
+  label();
+  $('#uMenuBtn').onclick = e => { e.stopPropagation(); menu.hidden = !menu.hidden; };
+  document.addEventListener('click', e => { if (!menu.contains(e.target)) menu.hidden = true; });
+  menu.addEventListener('click', async e => {
+    const a = e.target.dataset.a; if (!a) return; menu.hidden = true;
+    if (a === 'theme') toggleTheme();
+    if (a === 'sound') { ls.set('am_snd', !ls.get('am_snd', true)); label(); }
+    if (a === 'export') {
+      const h = await Store.history(sid);
+      download('percakapan.txt', h.map(m => `[${new Date(m.created_at).toLocaleString('id-ID')}] ${m.sender === 'user' ? (name || 'Aku') : CFG.BOT}: ${m.content}`).join('\n') || '(kosong)');
+    }
+    if (a === 'new') {
+      if (!confirm('Mulai chat baru? Riwayat lama tidak ditampilkan lagi di perangkat ini.')) return;
+      sid = uid(); ls.set('am_sid', sid); feed.clear(); setThinking(false); syncHero(); bind(); toast('Chat baru dimulai');
+    }
+  });
+}
+
+/* ================= SISI ADMIN ================= */
+function initAdmin() {
+  const Store = getStore('admin');
+  const feed = makeFeed($('#aMsgs'), $('#aMsgs'), 'admin', { avatar: () => avatar(info(cur).name, cur, true), copy: false, typewriter: false });
+  const COLS = ['#ffe14d', '#7ff0c5', '#ffb3d1', '#a9c4ff', '#ffc78a', '#c6a9ff'];
+  const T = {}, readAt = ls.get('am_read', {}); let cur = null, filter = 'all', q = '', tipT = 0;
+  const inp = $('#aInp'), adm = $('#adm');
+
+  function avatar(name, sid, small) {
+    const ini = name.startsWith('Pengguna ') ? sid.slice(0, 1) : name.trim()[0];
+    const a = el('div', 'av' + (small ? ' sm' : ''), (ini || '?').toUpperCase());
+    let h = 0; for (const c of sid) h = (h * 31 + c.charCodeAt(0)) >>> 0; a.style.background = COLS[h % COLS.length]; return a;
+  }
+  function info(sid) {
+    const a = T[sid], last = a[a.length - 1]; let name = '';
+    for (let i = a.length - 1; i >= 0; i--) if (a[i].sender === 'user' && a[i].name) { name = a[i].name; break; }
+    const ra = readAt[sid] || 0;
+    return { sid, last, name: name || 'Pengguna ' + sid.slice(0, 4), unread: a.filter(m => m.sender === 'user' && +new Date(m.created_at) > ra).length, open: last.sender === 'user' };
+  }
+  const markRead = sid => { const a = T[sid]; if (a && a.length) { readAt[sid] = +new Date(a[a.length - 1].created_at); ls.set('am_read', readAt); } };
+
+  function renderList() {
+    const all = Object.keys(T).filter(s => T[s].length).map(info);
+    $('#stTot').textContent = all.length; $('#stOpen').textContent = all.filter(i => i.open).length;
+    const totalUn = all.reduce((s, i) => s + i.unread, 0); document.title = (totalUn ? `(${totalUn}) ` : '') + 'Kotak masuk';
+    const qq = q.toLowerCase();
+    const rows = all.filter(i => (filter === 'all' || i.open) && (!qq || i.name.toLowerCase().includes(qq) || T[i.sid].some(m => m.content.toLowerCase().includes(qq))))
+      .sort((a, b) => new Date(b.last.created_at) - new Date(a.last.created_at));
+    const L = $('#aList'); L.replaceChildren();
+    if (!rows.length) { L.appendChild(el('div', 'emp', all.length ? 'Tidak ada yang cocok.' : 'Belum ada pesan masuk. Bagikan link halaman pengguna.')); return; }
+    rows.forEach(i => {
+      const d = el('div', 'item' + (i.sid === cur ? ' on' : '') + (i.unread ? ' un' : ''));
+      const b = el('div', 'bd2'), l1 = el('div', 'l1'), l2 = el('div', 'l2');
+      l1.append(el('b', null, i.name), el('span', 'tm', shortT(i.last.created_at)));
+      l2.appendChild(el('span', 'pv', (i.last.sender === 'admin' ? 'Kamu: ' : '') + i.last.content));
+      if (i.unread) l2.appendChild(el('span', 'bdg', i.unread));
+      b.append(l1, l2); d.append(avatar(i.name, i.sid), b); d.onclick = () => openThread(i.sid); L.appendChild(d);
+    });
+  }
+
+  async function openThread(sid) {
+    cur = sid; adm.classList.add('thread'); $('#aEmpty').hidden = true; $('#aBox').hidden = false;
+    feed.clear(); T[sid].forEach(m => feed.add(m, false));
+    head(); markRead(sid); renderList();
+    Store.typingListen(sid, userTyping(sid));
+    try {
+      const h = await Store.history(sid);
+      if (cur === sid && h.length > T[sid].length) { T[sid] = h; feed.clear(); h.forEach(m => feed.add(m, false)); markRead(sid); renderList(); }
+    } catch (e) {}
+    if (finePointer) inp.focus();
+  }
+  const listened = new Set();
+  function userTyping(sid) {
+    if (listened.has(sid)) return () => {}; listened.add(sid);
+    return p => {
+      if (p.who !== 'user' || cur !== sid) return;
+      feed.tip(true, [info(sid).name + ' sedang mengetik…']); clearTimeout(tipT); tipT = setTimeout(() => feed.tip(false), 3000);
+    };
+  }
+  function head() {
+    const i = info(cur); $('#aAv').replaceChildren(avatar(i.name, cur)); $('#aName').textContent = i.name; $('#aSub').textContent = 'ID ' + cur.slice(0, 8) + ' · ' + T[cur].length + ' pesan';
+  }
+
+  function receive(m) {
+    const a = T[m.session_id] || (T[m.session_id] = []);
+    if (a.some(x => x.id === m.id)) return;
+    a.push(m);
+    if (cur === m.session_id) {
+      feed.add(m, false); if (m.sender === 'user') { feed.tip(false); markRead(cur); } head();
+    }
+    if (m.sender === 'user') {
+      if (cur !== m.session_id || document.hidden) {
+        ping();
+        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification(info(m.session_id).name, { body: m.content }); } catch (e) {} }
+      }
+    }
+    renderList();
+  }
+
+  const adminTyping = throttle(() => cur && Store.typingSend(cur, 'admin'), 2000);
+  inp.addEventListener('input', () => { sleepAuto(inp); adminTyping(); });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && finePointer) { e.preventDefault(); send(); } });
+  $('#aSend').onclick = send;
+  async function send() {
+    const t = inp.value.trim(); if (!t || !cur) return;
+    inp.value = ''; sleepAuto(inp);
+    try { const own = (T[cur].find(m => m.owner_id) || {}).owner_id; receive(await Store.add({ session_id: cur, sender: 'admin', content: t, owner_id: own })); }
+    catch (e) { toast(('Balasan gagal terkirim. ' + hint(e)).trim()); inp.value = t; }
+  }
+
+  /* balasan cepat */
+  let manage = false;
+  const qr = () => ls.get('am_qr', CFG.QUICK);
+  function renderQr() {
+    const box = $('#aQr'); box.replaceChildren();
+    qr().forEach((t, i) => {
+      const b = el('button', 'qc' + (manage ? ' x' : ''), t);
+      b.onclick = () => { if (manage) { const l = qr(); l.splice(i, 1); ls.set('am_qr', l); renderQr(); } else { inp.value = inp.value ? inp.value + ' ' + t : t; sleepAuto(inp); inp.focus(); } };
+      box.appendChild(b);
+    });
+    const sv = el('button', 'qc sv', '+ Simpan teks ini');
+    sv.onclick = () => { const t = inp.value.trim(); if (!t) return toast('Ketik dulu teks yang mau disimpan'); const l = qr(); if (!l.includes(t)) l.push(t); ls.set('am_qr', l.slice(-12)); renderQr(); toast('Disimpan'); };
+    const mg = el('button', 'qc', manage ? 'Selesai' : 'Kelola'); mg.onclick = () => { manage = !manage; renderQr(); };
+    box.append(sv, mg);
+  }
+  renderQr();
+
+  /* aksi */
+  $('#aBack').onclick = () => { cur = null; adm.classList.remove('thread'); renderList(); };
+  $('#aDel').onclick = async () => {
+    if (!cur || !confirm('Hapus seluruh percakapan ini? Tidak bisa dibatalkan.')) return;
+    try { await Store.drop(cur); delete T[cur]; cur = null; $('#aBox').hidden = true; $('#aEmpty').hidden = false; adm.classList.remove('thread'); renderList(); toast('Percakapan dihapus'); }
+    catch (e) { toast('Gagal menghapus. Cek policy delete di Supabase.'); }
+  };
+  $('#aExp').onclick = () => { if (!cur) return; const i = info(cur); download('chat-' + i.name.replace(/\s+/g, '_') + '.txt', T[cur].map(m => `[${new Date(m.created_at).toLocaleString('id-ID')}] ${m.sender === 'user' ? i.name : 'Asisten'}: ${m.content}`).join('\n')); };
+  $('#aSearch').addEventListener('input', e => { q = e.target.value.trim(); renderList(); });
+  $$('.tabs button').forEach(b => b.onclick = () => { filter = b.dataset.f; $$('.tabs button').forEach(x => x.classList.toggle('on', x === b)); renderList(); });
+  $('#aTheme').onclick = toggleTheme;
+  const sndLbl = () => { $('#aSnd').textContent = 'Suara: ' + (ls.get('am_snd', true) ? 'on' : 'off'); }; sndLbl();
+  $('#aSnd').onclick = () => { ls.set('am_snd', !ls.get('am_snd', true)); sndLbl(); };
+  $('#aNotif').onclick = async () => {
+    if (!('Notification' in window)) return toast('Browser ini tidak mendukung notifikasi');
+    const r = await Notification.requestPermission(); toast(r === 'granted' ? 'Notifikasi aktif' : 'Notifikasi ditolak');
+  };
+  $('#aOut').onclick = async () => { try { await Store.logout(); } catch (e) {} location.reload(); };
+
+  /* muat awal */
+  (async () => {
+    try { (await Store.inbox()).forEach(m => { (T[m.session_id] || (T[m.session_id] = [])).push(m); }); }
+    catch (e) { toast(('Gagal memuat kotak masuk. ' + hint(e)).trim()); }
+    renderList(); Store.watch(null, receive);
+  })();
+}
+
+/* ================= BOOT ================= */
+let uInit = false, aInit = false;
+function showSetup(msg) { $('#vu').hidden = true; $('#va').hidden = true; $('#setup').hidden = false; $('#setupMsg').textContent = msg; }
+function startAdmin() {
+  $('#gate').hidden = true; $('#adm').hidden = false;
+  if (!aInit) { aInit = true; initAdmin(); }
+}
+async function adminEntry() {
+  if (aInit) return;
+  try { const u = await getStore('admin').me(); if (u && !u.is_anonymous) startAdmin(); } catch (e) {}
+}
+function show(m) {
+  if (!LIVE) {
+    showSetup(typeof supabase === 'undefined' ? 'Library Supabase gagal dimuat. Cek koneksi internet lalu muat ulang halaman.' : 'Isi URL dan KEY Supabase di bagian CFG pada file ini.');
+    return;
+  }
+  try { getStore(m); } catch (e) { showSetup('URL atau KEY Supabase tidak valid. Periksa lagi bagian CFG.'); return; }
+  $('#setup').hidden = true; $('#vu').hidden = m !== 'user'; $('#va').hidden = m !== 'admin';
+  if (m === 'user' && !uInit) { uInit = true; initUser(); }
+  if (m === 'admin') { document.title = 'Admin'; adminEntry(); }
+}
+$('#go').onclick = async () => {
+  const em = $('#em').value.trim(), pw = $('#pw').value; if (!em || !pw) return;
+  const b = $('#go'); b.disabled = true; $('#gerr').textContent = '';
+  try { await getStore('admin').login(em, pw); startAdmin(); }
+  catch (e) { $('#gerr').textContent = 'Email atau password salah.'; $('#pw').value = ''; }
+  b.disabled = false;
+};
+$('#pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('#go').click(); });
+window.addEventListener('hashchange', () => show(location.hash === '#admin' ? 'admin' : 'user'));
+show(location.hash === '#admin' ? 'admin' : 'user');
+})();
+</script>
+</body>
+</html>
